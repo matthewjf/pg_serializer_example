@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_09_27_231323) do
+ActiveRecord::Schema.define(version: 2018_09_27_231823) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -21,13 +21,13 @@ ActiveRecord::Schema.define(version: 2018_09_27_231323) do
     t.datetime "updated_at", null: false
   end
 
-  create_table "product_categories", force: :cascade do |t|
+  create_table "categories_products", force: :cascade do |t|
     t.bigint "product_id"
     t.bigint "category_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["category_id"], name: "index_product_categories_on_category_id"
-    t.index ["product_id"], name: "index_product_categories_on_product_id"
+    t.index ["category_id"], name: "index_categories_products_on_category_id"
+    t.index ["product_id"], name: "index_categories_products_on_product_id"
   end
 
   create_table "products", force: :cascade do |t|
@@ -44,7 +44,7 @@ ActiveRecord::Schema.define(version: 2018_09_27_231323) do
     t.index ["product_id"], name: "index_variations_on_product_id"
   end
 
-  add_foreign_key "product_categories", "categories"
-  add_foreign_key "product_categories", "products"
+  add_foreign_key "categories_products", "categories"
+  add_foreign_key "categories_products", "products"
   add_foreign_key "variations", "products"
 end
