@@ -1,51 +1,36 @@
 require 'active_support/concern'
 
-class ModelSerializer
-  attr_reader :model
-
-  def initialize(klass)
-    @model = klass
-  end
-
-  def attributes(attrs)
-  end
-
-  def attribute(label, column_name)
-  end
-
-  def has_many
-  end
-
-  def has_one
-  end
-
-  def belongs_to
-  end
-end
-
 module PgSerializable
   extend ActiveSupport::Concern
   included do
     def as_json_object
+      raise
     end
   end
 
   class_methods do
-    def model_serializer
-      @model_serializer ||= ModelSerializer.new(self)
+    def as_json_array
+      JSON.parse(
+        ActiveRecord::Base.connection.select_one(
+          pg_serializer.build_sql(pg_scope).to_sql
+        ).as_json['coalesce']
+      )
+    end
+
+    def build_sql(aliaser = nil)
+      pg_serializer.build_sql(pg_scope, aliaser)
     end
 
     def pg_serializable(&blk)
-
+      pg_serializer.instance_eval &blk
     end
 
-    def as_json_array
-      target = respond_to?(:to_sql) ? self : all
-      JSON.parse(
-        ActiveRecord::Base.connection.execute(
-          "SELECT json_agg(a.*) AS json FROM (#{target.to_sql}) a"
-        ).as_json.first['json']
-      )
+    def pg_serializer
+      @pg_serializer ||= Serializer.new(self)
+    end
+
+    def pg_scope
+      respond_to?(:to_sql) ? self : all
     end
   end
 end

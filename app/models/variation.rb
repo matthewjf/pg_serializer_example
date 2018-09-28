@@ -1,3 +1,8 @@
 class Variation < ApplicationRecord
   belongs_to :product
+  belongs_to :color
+
+  pg_serializable do
+    attributes :name, :id
+  end
 end
