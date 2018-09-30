@@ -1,13 +1,18 @@
 module PgSerializable
   class Serializer
     attr_reader :klass
-    attr_accessor :aliaser
+
+    attr_reader :joins
 
     def initialize(klass)
       @klass = klass
       @attr_map = {}
-      @assoc_map = {}
-      @aliaser = PgSerializable::Aliaser.new
+      @assoc_map = {
+        has_many: {},
+        belongs_to: {},
+        has_one: {}
+      }
+      @joins = []
     end
 
     def attributes(*attrs)
@@ -24,21 +29,26 @@ module PgSerializable
     end
 
     def has_many(association, label: nil)
-      @assoc_map["\'#{(label || association).to_s}\'"] = association
+      @assoc_map[:has_many]["\'#{(label || association).to_s}\'"] = association
     end
 
-    def belongs_to
-      # outside SELECT join
+    def belongs_to(association, label: nil)
+      @assoc_map[:belongs_to]["\'#{(label || association).to_s}\'"] = association
     end
 
     def has_one
     end
 
-    def build_sql(scope, aliaser=nil)
-      klass
+    def build_sql(scope, table_alias=nil)
+      table_alias ||= Aliaser.next!
+      query = klass
         .unscoped
-        .select(json_agg)
+        .select(json_agg(table_alias))
         .from(as(scope.to_sql, table_alias))
+
+      @joins.inject(query) do |query, join|
+        query.joins(join)
+      end
     end
 
     def as(sql, al)
@@ -47,37 +57,46 @@ module PgSerializable
 
     # private
 
-    def build_attributes
-      (build_simple_attributes + build_associations).flatten.join(',')
+    def build_attributes(table_alias)
+      (build_simple_attributes(table_alias) + build_associations(table_alias)).flatten.join(',')
     end
 
-    def build_simple_attributes
+    def build_simple_attributes(table_alias)
       @attr_map.map { |k,v| [k, "#{table_alias}.#{v}"] }
     end
 
-    def build_associations
-      @assoc_map.map do |k,v|
-        next_alias = aliaser.next
+    def build_associations(table_alias)
+      @joins = []
+      @next_alias = Aliaser.next!(table_alias)
+
+      @assoc_map[:has_many].map do |k,v|
+        na = @next_alias
+        @next_alias = Aliaser.next!(table_alias)
         target = association(v)
         target_klass = target.klass
-        foreign_key = target.join_keys.foreign_key
-        key = target.join_keys.key
-        target_klass.pg_serializer.aliaser = next_alias
-        skope = target_klass.select(target_klass.pg_serializer.json_agg).from("#{target_klass.table_name} #{next_alias.name}").where("#{next_alias.name}.#{key}=#{table_alias}.#{foreign_key}")
+        foreign_key = target.join_foreign_key
+        key = target.join_primary_key
+        skope = target_klass.build_sql(na).where("#{na}.#{key}=#{table_alias}.#{foreign_key}")
         [k, "(#{skope.to_sql})"]
+      end +
+      @assoc_map[:belongs_to].map do |k,v|
+        na = @next_alias
+        @next_alias = Aliaser.next!(table_alias)
+        target = association(v)
+        target_klass = target.klass
+        foreign_key = target.join_foreign_key
+        key = target.join_primary_key
+        @joins << "LEFT JOIN #{target_klass.table_name} #{na} ON #{table_alias}.#{foreign_key}=#{na}.#{key}"
+        [k, "CASE WHEN #{na}.#{key} IS NOT NULL THEN #{target_klass.pg_serializer.json_build_object(na)} ELSE NULL END"]
       end
     end
 
-    def json_build_object
-      "json_build_object(#{build_attributes})"
+    def json_build_object(table_alias)
+      "json_build_object(#{build_attributes(table_alias)})"
     end
 
-    def json_agg
-      "COALESCE(json_agg(#{json_build_object}), '[]'::json)"
-    end
-
-    def table_alias
-      aliaser.name
+    def json_agg(table_alias)
+      "COALESCE(json_agg(#{json_build_object(table_alias)}), '[]'::json)"
     end
 
     def association(name)
@@ -87,7 +106,5 @@ module PgSerializable
     def column_exists?(column_name)
       raise AttributeError.new("#{column_name.to_s} column doesn't exist for table #{klass.table_name}") unless klass.column_names.include? column_name.to_s
     end
-
-
   end
 end

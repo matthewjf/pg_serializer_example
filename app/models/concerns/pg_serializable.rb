@@ -10,15 +10,13 @@ module PgSerializable
 
   class_methods do
     def as_json_array
-      JSON.parse(
-        ActiveRecord::Base.connection.select_one(
-          pg_serializer.build_sql(pg_scope).to_sql
-        ).as_json['coalesce']
-      )
+      ActiveRecord::Base.connection.select_one(
+        pg_serializer.build_sql(pg_scope).to_sql
+      ).as_json['coalesce']
     end
 
-    def build_sql(aliaser = nil)
-      pg_serializer.build_sql(pg_scope, aliaser)
+    def build_sql(table_alias = nil)
+      pg_serializer.build_sql(pg_scope, table_alias)
     end
 
     def pg_serializable(&blk)
