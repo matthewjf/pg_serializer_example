@@ -1,7 +1,6 @@
 module PgSerializable
   class Serializer
     attr_reader :klass
-
     attr_reader :joins
 
     def initialize(klass)
@@ -36,7 +35,8 @@ module PgSerializable
       @assoc_map[:belongs_to]["\'#{(label || association).to_s}\'"] = association
     end
 
-    def has_one
+    def has_one(association, label: nil)
+      @assoc_map[:has_one]["\'#{(label || association).to_s}\'"] = association
     end
 
     def build_sql(scope, table_alias=nil)
@@ -51,8 +51,8 @@ module PgSerializable
       end
     end
 
-    def as(sql, al)
-      "(#{sql}) #{al}"
+    def as(sql, table_alias)
+      "(#{sql}) #{table_alias}"
     end
 
     # private
@@ -71,7 +71,7 @@ module PgSerializable
 
       @assoc_map[:has_many].map do |k,v|
         na = @next_alias
-        @next_alias = Aliaser.next!(table_alias)
+        @next_alias = Aliaser.next!(@next_alias)
         target = association(v)
         target_klass = target.klass
         foreign_key = target.join_foreign_key
@@ -81,13 +81,27 @@ module PgSerializable
       end +
       @assoc_map[:belongs_to].map do |k,v|
         na = @next_alias
-        @next_alias = Aliaser.next!(table_alias)
+        @next_alias = Aliaser.next!(@next_alias)
         target = association(v)
         target_klass = target.klass
         foreign_key = target.join_foreign_key
         key = target.join_primary_key
         @joins << "LEFT JOIN #{target_klass.table_name} #{na} ON #{table_alias}.#{foreign_key}=#{na}.#{key}"
-        [k, "CASE WHEN #{na}.#{key} IS NOT NULL THEN #{target_klass.pg_serializer.json_build_object(na)} ELSE NULL END"]
+        build_object_result = target_klass.pg_serializer.json_build_object(na)
+        @joins += target_klass.pg_serializer.joins # pull joins from target class to outer scope
+        [k, "CASE WHEN #{na}.#{key} IS NOT NULL THEN #{build_object_result} ELSE NULL END"]
+      end +
+      @assoc_map[:has_one].map do |k,v|
+        na = @next_alias
+        @next_alias = Aliaser.next!(@next_alias)
+        target = association(v)
+        target_klass = target.klass
+        foreign_key = target.join_foreign_key
+        key = target.join_primary_key
+        @joins << "LEFT JOIN #{target_klass.table_name} #{na} ON #{table_alias}.#{foreign_key}=#{na}.#{key}"
+        build_object_result = target_klass.pg_serializer.json_build_object(na)
+        @joins += target_klass.pg_serializer.joins # pull joins from target klass to outer scope
+        [k, "CASE WHEN #{na}.#{key} IS NOT NULL THEN #{build_object_result} ELSE NULL END"]
       end
     end
 

@@ -6,7 +6,7 @@ class Product < ApplicationRecord
   pg_serializable do
     attributes :name, :id
     attribute :name, label: :test_name
-    has_many :variations
+    # has_many :variations
     belongs_to :label
   end
 end
