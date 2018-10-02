@@ -28,6 +28,7 @@ module PgSerializable
 
     def serializable(&blk)
       serializer.instance_eval &blk
+      serializer.check_for_cycles!
     end
 
     def serializer

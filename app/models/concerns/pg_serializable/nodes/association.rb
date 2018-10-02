@@ -1,6 +1,8 @@
 module PgSerializable
   module Nodes
     class Association < Base
+      attr_reader :klass, :name
+      
       def initialize(klass, name, type, label: nil)
         @name = name
         @klass = klass
@@ -10,6 +12,10 @@ module PgSerializable
 
       def to_sql(outer_alias, aliaser)
         ["\'#{@label}\'", "(#{value(outer_alias, aliaser)})"].join(',')
+      end
+
+      def target
+        @target ||= association.klass
       end
 
       private
@@ -31,10 +37,6 @@ module PgSerializable
 
       def association
         @association ||= @klass.reflect_on_association(@name)
-      end
-
-      def target
-        @target ||= association.klass
       end
 
       def foreign_key

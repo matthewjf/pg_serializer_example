@@ -43,7 +43,16 @@ module PgSerializable
       query(json_build_object.to_sql, skope)
     end
 
-    # private
+    def check_for_cycles!(klass=self.klass)
+      @attributes.each do |attribute|
+        next unless attribute.is_a?(Nodes::Association)
+        target_klass = attribute.target
+        raise AssociationError.new("serializers contain a cycle, check class `#{attribute.klass}` for association `:#{attribute.name}`") if target_klass == klass
+        target_klass.serializer.check_for_cycles!(self.klass)
+      end
+    end
+
+    private
 
     def query(select_sql, from_scope)
       klass
