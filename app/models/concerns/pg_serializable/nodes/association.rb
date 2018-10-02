@@ -1,6 +1,6 @@
 module PgSerializable
   module Nodes
-    class Association
+    class Association < Base
       def initialize(klass, name, type, label: nil)
         @name = name
         @klass = klass
@@ -17,12 +17,12 @@ module PgSerializable
       def value(outer_alias, aliaser)
         next_alias = aliaser.next!
         case @type
-        when :has_one
-          target.as_json_array(aliaser).where("#{next_alias}.#{primary_key}=#{outer_alias}.#{foreign_key}").to_sql
+        when :belongs_to
+          target.as_json_object(aliaser).where("#{next_alias}.#{primary_key}=#{outer_alias}.#{foreign_key}").to_sql
         when :has_many
           target.as_json_array(aliaser).where("#{next_alias}.#{primary_key}=#{outer_alias}.#{foreign_key}").to_sql
-        when :belongs_to
-          subquery_alias = "#{next_alias[0].next}#{next_alias[1]}"
+        when :has_one
+          subquery_alias = "#{next_alias[0]}#{next_alias[1]}#{next_alias[0]}" # avoid alias collision
           target.select("DISTINCT ON (#{primary_key}) #{subquery_alias}.*").from(
             "#{target.table_name} #{subquery_alias}"
           ).as_json_object(aliaser).where("#{next_alias}.#{primary_key}=#{outer_alias}.#{foreign_key}").to_sql

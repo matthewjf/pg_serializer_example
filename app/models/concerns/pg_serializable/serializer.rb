@@ -29,24 +29,24 @@ module PgSerializable
       @attributes << Nodes::Association.new(klass, association, :has_one, label: label)
     end
 
-    def as_json_array(scope, aliaser=nil)
-      @aliaser = aliaser || Aliaser.new
-      table_alias
+    def as_json_array(scope, aliaser)
+      @aliaser = aliaser
+      @table_alias = aliaser.to_s
 
       query = klass
         .unscoped
-        .select(json_agg)
-        .from(Nodes::Alias.new(scope, table_alias).to_sql)
+        .select(json_agg.to_sql)
+        .from(Nodes::As.new(scope, table_alias).to_sql)
     end
 
-    def as_json_object(scope, aliaser=nil)
-      @aliaser = aliaser || Aliaser.new
-      table_alias
+    def as_json_object(scope, aliaser)
+      @aliaser = aliaser
+      @table_alias = aliaser.to_s
 
       query = klass
         .unscoped
-        .select(json_build_object)
-        .from(Nodes::Alias.new(scope, table_alias).to_sql)
+        .select(json_build_object.to_sql)
+        .from(Nodes::As.new(scope, table_alias).to_sql)
     end
 
     # private
@@ -66,15 +66,15 @@ module PgSerializable
     end
 
     def json_build_object
-      "json_build_object(#{build_attributes})"
+      Nodes::JsonBuildObject.new(build_attributes)
     end
 
     def json_agg
-      "COALESCE(json_agg(#{json_build_object}), '[]'::json)"
+      Nodes::Coalesce.new(Nodes::JsonAgg.new(json_build_object), Nodes::JsonArray.new)
     end
 
     def table_alias
-      @table_alias ||= @aliaser.to_s
+      @table_alias
     end
 
     def association(name)

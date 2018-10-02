@@ -1,6 +1,6 @@
 module PgSerializable
   module Nodes
-    class Alias
+    class As < Base
       def initialize(scope, table_alias)
         @scope = scope
         @table_alias = table_alias

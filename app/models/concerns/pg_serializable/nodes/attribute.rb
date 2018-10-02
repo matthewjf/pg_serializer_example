@@ -1,6 +1,6 @@
 module PgSerializable
   module Nodes
-    class Attribute
+    class Attribute < Base
       def initialize(column_name, label: nil)
         @column_name = column_name
         @label = label || column_name
@@ -8,10 +8,6 @@ module PgSerializable
 
       def to_sql
         ["\'#{@label}\'", @column_name].join(',')
-      end
-
-      def to_s
-        to_sql
       end
     end
   end
