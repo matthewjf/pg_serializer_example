@@ -1,12 +1,18 @@
 require 'active_support/concern'
+require 'oj'
 
 module PgSerializable
   extend ActiveSupport::Concern
   included do
+    def json
+      ActiveRecord::Base.connection.select_one(
+        self.class.where(id: id).limit(1).as_json_object.to_sql
+      ).as_json['json_build_object']
+    end
   end
 
   class_methods do
-    def as_array
+    def json
       ActiveRecord::Base.connection.select_one(
         serializer.as_json_array(pg_scope, Aliaser.new).to_sql
       ).as_json['coalesce']

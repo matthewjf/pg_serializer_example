@@ -1,3 +1,6 @@
 module PgSerializable
-  class AttributeError < StandardError; end
+  class Serializer
+    class AttributeError < ::StandardError;end
+    class AssociationError < ::StandardError;end
+  end
 end

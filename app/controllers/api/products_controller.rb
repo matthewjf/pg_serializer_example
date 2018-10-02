@@ -1,9 +1,9 @@
 class Api::ProductsController < ApplicationController
   def index
-    render json: Product.limit(3).order(updated_at: :desc).as_array
+    render json: Product.limit(3).order(updated_at: :desc).json
   end
 
   def show
-    head :ok
+    render json: Product.find(params[:id]).json
   end
 end

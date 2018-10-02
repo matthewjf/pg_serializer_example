@@ -1,3 +1,5 @@
+require_relative 'errors.rb'
+
 module PgSerializable
   class Serializer
     attr_reader :klass
@@ -18,15 +20,15 @@ module PgSerializable
     end
 
     def has_many(association, label: nil)
-      @attributes << Nodes::Association.new(klass, association, :has_many, label: label)
+      @attributes << Nodes::Association.new(klass, association, :has_many, label: label) if association_exists?(association)
     end
 
     def belongs_to(association, label: nil)
-      @attributes << Nodes::Association.new(klass, association, :belongs_to, label: label)
+      @attributes << Nodes::Association.new(klass, association, :belongs_to, label: label) if association_exists?(association)
     end
 
     def has_one(association, label: nil)
-      @attributes << Nodes::Association.new(klass, association, :has_one, label: label)
+      @attributes << Nodes::Association.new(klass, association, :has_one, label: label) if association_exists?(association)
     end
 
     def as_json_array(skope, aliaser)
@@ -81,7 +83,12 @@ module PgSerializable
     end
 
     def column_exists?(column_name)
-      raise AttributeError.new("#{column_name.to_s} column doesn't exist for table #{klass.table_alias}") unless klass.column_names.include? column_name.to_s
+      raise AttributeError.new("`#{column_name.to_s}` column doesn't exist for table #{klass.table_name}") unless klass.column_names.include? column_name.to_s
+      true
+    end
+
+    def association_exists?(name)
+      raise AssociationError.new("`#{name.to_s}` association doesn't exist for table #{klass.table_name}") if klass.reflect_on_association(name).nil?
       true
     end
   end

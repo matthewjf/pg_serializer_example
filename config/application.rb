@@ -9,6 +9,7 @@ Bundler.require(*Rails.groups)
 module PgSerializerTest
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
+    config.eager_load = true
     config.load_defaults 5.2
   end
 end
