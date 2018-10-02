@@ -9,24 +9,24 @@ module PgSerializable
 
     def attributes(*attrs)
       attrs.each do |attribute|
-        @attributes << Attributes::Simple.new(attribute)
+        @attributes << Nodes::Attribute.new(attribute)
       end
     end
 
     def attribute(column_name, label: nil)
-      @attributes << Attributes::Simple.new(column_name, label: label)
+      @attributes << Nodes::Attribute.new(column_name, label: label)
     end
 
     def has_many(association, label: nil)
-      @attributes << Attributes::Association.new(klass, association, :has_many, label: label)
+      @attributes << Nodes::Association.new(klass, association, :has_many, label: label)
     end
 
     def belongs_to(association, label: nil)
-      @attributes << Attributes::Association.new(klass, association, :belongs_to, label: label)
+      @attributes << Nodes::Association.new(klass, association, :belongs_to, label: label)
     end
 
     def has_one(association, label: nil)
-      @attributes << Attributes::Association.new(klass, association, :has_one, label: label)
+      @attributes << Nodes::Association.new(klass, association, :has_one, label: label)
     end
 
     def as_json_array(scope, aliaser=nil)
@@ -36,7 +36,7 @@ module PgSerializable
       query = klass
         .unscoped
         .select(json_agg)
-        .from(as(scope.to_sql, table_alias))
+        .from(Nodes::Alias.new(scope, table_alias).to_sql)
     end
 
     def as_json_object(scope, aliaser=nil)
@@ -46,11 +46,7 @@ module PgSerializable
       query = klass
         .unscoped
         .select(json_build_object)
-        .from(as(scope.to_sql, table_alias))
-    end
-
-    def as(sql, table_alias)
-      "(#{sql}) #{table_alias}"
+        .from(Nodes::Alias.new(scope, table_alias).to_sql)
     end
 
     # private
@@ -58,9 +54,9 @@ module PgSerializable
     def build_attributes
       res = []
       @attributes.each do |attribute|
-        if attribute.is_a?(Attributes::Simple)
+        if attribute.is_a?(Nodes::Attribute)
           res << attribute.to_sql
-        elsif attribute.is_a?(Attributes::Association)
+        elsif attribute.is_a?(Nodes::Association)
           res << attribute.to_sql(table_alias, @aliaser)
         else
           raise 'unknown attribute type'

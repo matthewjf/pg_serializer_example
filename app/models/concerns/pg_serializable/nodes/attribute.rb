@@ -1,6 +1,6 @@
 module PgSerializable
-  module Attributes
-    class Simple
+  module Nodes
+    class Attribute
       def initialize(column_name, label: nil)
         @column_name = column_name
         @label = label || column_name

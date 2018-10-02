@@ -1,5 +1,5 @@
 module PgSerializable
-  module Attributes
+  module Nodes
     class Association
       def initialize(klass, name, type, label: nil)
         @name = name
