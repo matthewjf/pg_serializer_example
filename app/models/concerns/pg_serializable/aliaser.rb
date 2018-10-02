@@ -1,20 +1,15 @@
 module PgSerializable
   class Aliaser
-    def self.next!(curr=nil)
-      curr ? "z#{curr[1].to_i + 1}" : 'z0'
-    end
-
-    def initialize(curr_index=0)
-      @index = curr_index
+    def initialize(current=nil)
+      @current = current || 'a0'
     end
 
     def next!
-      @index += 1
-      self
+      @current = @current.next
     end
 
     def to_s
-      "z#{@index}"
+      @current
     end
   end
 end

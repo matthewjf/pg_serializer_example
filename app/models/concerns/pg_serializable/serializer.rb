@@ -1,7 +1,6 @@
 module PgSerializable
   class Serializer
     attr_reader :klass
-    attr_reader :joins
 
     def initialize(klass)
       @klass = klass
@@ -11,7 +10,6 @@ module PgSerializable
         belongs_to: {},
         has_one: {}
       }
-      @joins = []
     end
 
     def attributes(*attrs)
@@ -39,78 +37,83 @@ module PgSerializable
       @assoc_map[:has_one]["\'#{(label || association).to_s}\'"] = association
     end
 
-    def build_sql(scope, table_alias=nil)
-      table_alias ||= Aliaser.next!
+    def as_json_array(scope, aliaser=nil)
+      @aliaser = aliaser || Aliaser.new
+      table_name
+
       query = klass
         .unscoped
-        .select(json_agg(table_alias))
-        .from(as(scope.to_sql, table_alias))
-
-      @joins.inject(query) do |query, join|
-        query.joins(join)
-      end
+        .select(json_agg)
+        .from(as(scope.to_sql, table_name))
     end
 
-    def as(sql, table_alias)
-      "(#{sql}) #{table_alias}"
+    def as_json_object(scope, aliaser=nil)
+      @aliaser = aliaser || Aliaser.new
+      table_name
+
+      query = klass
+        .unscoped
+        .select(json_build_object)
+        .from(as(scope.to_sql, table_name))
+    end
+
+    def as(sql, table_name)
+      "(#{sql}) #{table_name}"
     end
 
     # private
 
-    def build_attributes(table_alias)
-      (build_simple_attributes(table_alias) + build_associations(table_alias)).flatten.join(',')
+    def build_attributes
+      (build_simple_attributes + build_associations).flatten.join(',')
     end
 
-    def build_simple_attributes(table_alias)
-      @attr_map.map { |k,v| [k, "#{table_alias}.#{v}"] }
+    def build_simple_attributes
+      @attr_map.map { |k,v| [k, "#{table_name}.#{v}"] }
     end
 
-    def build_associations(table_alias)
-      @joins = []
-      @next_alias = Aliaser.next!(table_alias)
-
+    def build_associations
       @assoc_map[:has_many].map do |k,v|
-        na = @next_alias
-        @next_alias = Aliaser.next!(@next_alias)
+        next_alias = @aliaser.next!
         target = association(v)
         target_klass = target.klass
         foreign_key = target.join_foreign_key
         key = target.join_primary_key
-        skope = target_klass.build_sql(na).where("#{na}.#{key}=#{table_alias}.#{foreign_key}")
+        skope = target_klass.as_json_array(@aliaser).where("#{next_alias}.#{key}=#{table_name}.#{foreign_key}")
         [k, "(#{skope.to_sql})"]
       end +
       @assoc_map[:belongs_to].map do |k,v|
-        na = @next_alias
-        @next_alias = Aliaser.next!(@next_alias)
+        next_alias = @aliaser.next!
         target = association(v)
         target_klass = target.klass
         foreign_key = target.join_foreign_key
         key = target.join_primary_key
-        @joins << "LEFT JOIN #{target_klass.table_name} #{na} ON #{table_alias}.#{foreign_key}=#{na}.#{key}"
-        build_object_result = target_klass.pg_serializer.json_build_object(na)
-        @joins += target_klass.pg_serializer.joins # pull joins from target class to outer scope
-        [k, "CASE WHEN #{na}.#{key} IS NOT NULL THEN #{build_object_result} ELSE NULL END"]
+        skope = target_klass.as_json_object(@aliaser).where("#{next_alias}.#{key}=#{table_name}.#{foreign_key}")
+        [k, "(#{skope.to_sql})"]
       end +
       @assoc_map[:has_one].map do |k,v|
-        na = @next_alias
-        @next_alias = Aliaser.next!(@next_alias)
+        next_alias = @aliaser.next!
+        subquery_alias = next_alias[0].next + next_alias[1]
         target = association(v)
         target_klass = target.klass
         foreign_key = target.join_foreign_key
         key = target.join_primary_key
-        @joins << "LEFT JOIN #{target_klass.table_name} #{na} ON #{table_alias}.#{foreign_key}=#{na}.#{key}"
-        build_object_result = target_klass.pg_serializer.json_build_object(na)
-        @joins += target_klass.pg_serializer.joins # pull joins from target klass to outer scope
-        [k, "CASE WHEN #{na}.#{key} IS NOT NULL THEN #{build_object_result} ELSE NULL END"]
+        skope = target_klass.select("DISTINCT ON (#{key}) #{subquery_alias}.*").from(
+          "#{target_klass.table_name} #{subquery_alias}"
+        ).as_json_object(@aliaser).where("#{next_alias}.#{key}=#{table_name}.#{foreign_key}")
+        [k, "(#{skope.to_sql})"]
       end
     end
 
-    def json_build_object(table_alias)
-      "json_build_object(#{build_attributes(table_alias)})"
+    def json_build_object
+      "json_build_object(#{build_attributes})"
     end
 
-    def json_agg(table_alias)
-      "COALESCE(json_agg(#{json_build_object(table_alias)}), '[]'::json)"
+    def json_agg
+      "COALESCE(json_agg(#{json_build_object}), '[]'::json)"
+    end
+
+    def table_name
+      @table_name ||= @aliaser.to_s
     end
 
     def association(name)

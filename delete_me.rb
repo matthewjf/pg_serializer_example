@@ -3,17 +3,19 @@ JSON.parse(ActiveRecord::Base.connection.execute(<<-SQL
   SELECT json_agg(json_build_object(
     'id', a1.id,
     'name', a1.name,
-    'product', json_build_object(
-      'id', a2.id,
-      'name', a2.name
+    'product', (
+      SELECT json_build_object(
+        'id', a2.id,
+        'name', a2.name
+      )
+      FROM products a2
+      WHERE a2.id=a1.product_id
     )
   )) json
   FROM (
     SELECT *
     FROM variations
   ) a1
-  LEFT JOIN products a2
-  ON a2.id=a1.product_id
 SQL
 ).as_json.first['json'])
 

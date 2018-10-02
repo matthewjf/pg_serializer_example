@@ -3,20 +3,21 @@ require 'active_support/concern'
 module PgSerializable
   extend ActiveSupport::Concern
   included do
-    def as_json_object
-      raise
-    end
   end
 
   class_methods do
-    def as_json_array
+    def as_array
       ActiveRecord::Base.connection.select_one(
-        pg_serializer.build_sql(pg_scope).to_sql
+        pg_serializer.as_json_array(pg_scope).to_sql
       ).as_json['coalesce']
     end
 
-    def build_sql(table_alias = nil)
-      pg_serializer.build_sql(pg_scope, table_alias)
+    def as_json_array(table_alias = nil)
+      pg_serializer.as_json_array(pg_scope, table_alias)
+    end
+
+    def as_json_object(table_alias = nil)
+      pg_serializer.as_json_object(pg_scope, table_alias)
     end
 
     def pg_serializable(&blk)
@@ -32,16 +33,3 @@ module PgSerializable
     end
   end
 end
-
-=begin
-  class Product < ApplicationRecord
-    pg_serializable do
-      attributes :name
-      attribute :test_name, :name
-      has_many :categories, -> { joins(:categories) }
-    end
-  end
-
-  Product.limit(10).as_json(:test)
-  => {name: 'whatever', test_name: 'whatever', categories: [{name: 'yyy'}, {name: 'zzz'}] }
-=end
