@@ -5,10 +5,10 @@ class Product < ApplicationRecord
   belongs_to :label
 
   pg_serializable do
-    # attributes :name, :id
-    # attribute :name, label: :test_name
+    attributes :name, :id
+    attribute :name, label: :test_name
     has_many :variations
     # has_one :variation
-    # belongs_to :label
+    belongs_to :label
   end
 end
