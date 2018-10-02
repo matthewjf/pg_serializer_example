@@ -9,12 +9,12 @@ module PgSerializable
 
     def attributes(*attrs)
       attrs.each do |attribute|
-        @attributes << Nodes::Attribute.new(attribute)
+        @attributes << Nodes::Attribute.new(attribute) if column_exists?(attribute)
       end
     end
 
     def attribute(column_name, label: nil)
-      @attributes << Nodes::Attribute.new(column_name, label: label)
+      @attributes << Nodes::Attribute.new(column_name, label: label) if column_exists?(column_name)
     end
 
     def has_many(association, label: nil)
@@ -29,27 +29,26 @@ module PgSerializable
       @attributes << Nodes::Association.new(klass, association, :has_one, label: label)
     end
 
-    def as_json_array(scope, aliaser)
+    def as_json_array(skope, aliaser)
       @aliaser = aliaser
-      @table_alias = aliaser.to_s
-
-      query = klass
-        .unscoped
-        .select(json_agg.to_sql)
-        .from(Nodes::As.new(scope, table_alias).to_sql)
+      @table_alias = @aliaser.to_s
+      query(json_agg.to_sql, skope)
     end
 
-    def as_json_object(scope, aliaser)
+    def as_json_object(skope, aliaser)
       @aliaser = aliaser
-      @table_alias = aliaser.to_s
-
-      query = klass
-        .unscoped
-        .select(json_build_object.to_sql)
-        .from(Nodes::As.new(scope, table_alias).to_sql)
+      @table_alias = @aliaser.to_s
+      query(json_build_object.to_sql, skope)
     end
 
     # private
+
+    def query(select_sql, from_scope)
+      klass
+        .unscoped
+        .select(select_sql)
+        .from(Nodes::As.new(from_scope, @table_alias).to_sql)
+    end
 
     def build_attributes
       res = []
@@ -57,7 +56,7 @@ module PgSerializable
         if attribute.is_a?(Nodes::Attribute)
           res << attribute.to_sql
         elsif attribute.is_a?(Nodes::Association)
-          res << attribute.to_sql(table_alias, @aliaser)
+          res << attribute.to_sql(@table_alias, @aliaser)
         else
           raise 'unknown attribute type'
         end
@@ -83,6 +82,7 @@ module PgSerializable
 
     def column_exists?(column_name)
       raise AttributeError.new("#{column_name.to_s} column doesn't exist for table #{klass.table_alias}") unless klass.column_names.include? column_name.to_s
+      true
     end
   end
 end

@@ -20,7 +20,7 @@ module PgSerializable
       serializer.as_json_object(pg_scope, table_alias)
     end
 
-    def pg_serializable(&blk)
+    def serializable(&blk)
       serializer.instance_eval &blk
     end
 
