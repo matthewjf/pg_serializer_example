@@ -5,6 +5,5 @@ class Variation < ApplicationRecord
   serializable do
     attributes :name, :id
     belongs_to :color
-    belongs_to :product
   end
 end
