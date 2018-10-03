@@ -1,3 +1,5 @@
+require 'pg_serializable'
+
 class ApplicationRecord < ActiveRecord::Base
   include PgSerializable
 
