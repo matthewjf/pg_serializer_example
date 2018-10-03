@@ -33,8 +33,15 @@ module PgSerializable
       def has_many_through(outer_alias, next_alias, aliaser)
         through = association.through_reflection
         source = association.source_reflection
-        association.klass.select("*").joins(through.name).as_json_array(aliaser)
-          .where("#{next_alias}.#{through.join_primary_key}=#{outer_alias}.#{foreign_key}").to_sql
+        # NOTE: this will fail if the source table shares the same foreign key as your join table
+        #       i.e. products and categories have a join table but categories has a product_id column
+        association
+          .klass
+          .select("#{source.table_name}.*, #{through.table_name}.#{source.join_foreign_key}, #{through.table_name}.#{through.join_primary_key}")
+          .joins(through.name)
+          .as_json_array(aliaser)
+          .where("#{next_alias}.#{through.join_primary_key}=#{outer_alias}.#{foreign_key}")
+          .to_sql
       end
 
       def has_one(outer_alias, next_alias, aliaser)

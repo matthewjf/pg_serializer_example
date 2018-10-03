@@ -6,8 +6,8 @@ module PgSerializable
         @label = label || column_name
       end
 
-      def to_sql
-        ["\'#{@label}\'", @column_name].join(',')
+      def to_sql(table_alias=nil)
+        ["\'#{@label}\'", "#{table_alias ? table_alias + '.' : ''}#{@column_name}"].join(',')
       end
     end
   end

@@ -65,7 +65,7 @@ module PgSerializable
       res = []
       @attributes.each do |attribute|
         if attribute.is_a?(Nodes::Attribute)
-          res << attribute.to_sql
+          res << attribute.to_sql(@table_alias)
         elsif attribute.is_a?(Nodes::Association)
           res << attribute.to_sql(@table_alias, @aliaser)
         else

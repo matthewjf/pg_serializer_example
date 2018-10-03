@@ -7,7 +7,7 @@ module PgSerializable
     def json
       ActiveRecord::Base.connection.select_one(
         self.class.where(id: id).limit(1).as_json_object.to_sql
-      ).as_json['json_build_object']
+      )['json_build_object']
     end
   end
 
@@ -15,7 +15,7 @@ module PgSerializable
     def json
       ActiveRecord::Base.connection.select_one(
         serializer.as_json_array(pg_scope, Aliaser.new).to_sql
-      ).as_json['coalesce']
+      )['coalesce']
     end
 
     def as_json_array(table_alias = Aliaser.new)
