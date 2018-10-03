@@ -61,3 +61,28 @@ JSON.parse(ActiveRecord::Base.connection.select_one(scoper.to_sql).as_json['coal
   ) z0
   LIMIT 3)
 SQL
+
+
+ActiveRecord::Base.connection.execute(<<-SQL
+  SELECT
+    COALESCE(json_agg(json_build_object(
+      'categories',
+      (
+        SELECT COALESCE(json_agg(json_build_object('name',a1.name)),'[]' :: json)
+        FROM
+          (
+            SELECT *
+            FROM "categories"
+            INNER JOIN "categories_products" ON "categories_products"."category_id" = "categories"."id"
+          ) a1
+        WHERE (a1.category_id = a0.id)
+      )
+    )), '[]' :: json)
+  FROM (
+    SELECT "products".*
+    FROM "products"
+    ORDER BY "products"."updated_at" DESC
+    LIMIT 3
+  ) a0
+SQL
+)

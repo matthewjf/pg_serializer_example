@@ -2,7 +2,7 @@ module PgSerializable
   module Nodes
     class Association < Base
       attr_reader :klass, :name
-      
+
       def initialize(klass, name, type, label: nil)
         @name = name
         @klass = klass
@@ -22,17 +22,30 @@ module PgSerializable
 
       def value(outer_alias, aliaser)
         next_alias = aliaser.next!
-        case @type
-        when :belongs_to
-          target.as_json_object(aliaser).where("#{next_alias}.#{primary_key}=#{outer_alias}.#{foreign_key}").to_sql
-        when :has_many
-          target.as_json_array(aliaser).where("#{next_alias}.#{primary_key}=#{outer_alias}.#{foreign_key}").to_sql
-        when :has_one
-          subquery_alias = "#{next_alias[0]}#{next_alias[1]}#{next_alias[0]}" # avoid alias collision
-          target.select("DISTINCT ON (#{primary_key}) #{subquery_alias}.*").from(
-            "#{target.table_name} #{subquery_alias}"
-          ).as_json_object(aliaser).where("#{next_alias}.#{primary_key}=#{outer_alias}.#{foreign_key}").to_sql
-        end
+        self.send(@type, outer_alias, next_alias, aliaser)
+      end
+
+      def has_many(outer_alias, next_alias, aliaser)
+        return has_many_through(outer_alias, next_alias, aliaser) if association.through_reflection?
+        target.as_json_array(aliaser).where("#{next_alias}.#{primary_key}=#{outer_alias}.#{foreign_key}").to_sql
+      end
+
+      def has_many_through(outer_alias, next_alias, aliaser)
+        through = association.through_reflection
+        source = association.source_reflection
+        association.klass.select("*").joins(through.name).as_json_array(aliaser)
+          .where("#{next_alias}.#{through.join_primary_key}=#{outer_alias}.#{foreign_key}").to_sql
+      end
+
+      def has_one(outer_alias, next_alias, aliaser)
+        subquery_alias = "#{next_alias[0]}#{next_alias[1]}#{next_alias[0]}" # avoid alias collision
+        target.select("DISTINCT ON (#{primary_key}) #{subquery_alias}.*").from(
+          "#{target.table_name} #{subquery_alias}"
+        ).as_json_object(aliaser).where("#{next_alias}.#{primary_key}=#{outer_alias}.#{foreign_key}").to_sql
+      end
+
+      def belongs_to(outer_alias, next_alias, aliaser)
+        target.as_json_object(aliaser).where("#{next_alias}.#{primary_key}=#{outer_alias}.#{foreign_key}").to_sql
       end
 
       def association
