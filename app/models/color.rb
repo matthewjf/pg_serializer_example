@@ -1,5 +1,10 @@
 class Color < ApplicationRecord
+  has_many :products, through: :variations
+  has_many :variations
+
   serializable do
-    attributes :id, :hex
+    default do
+      attributes :id, :hex
+    end
   end
 end

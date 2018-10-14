@@ -5,10 +5,17 @@ class Product < ApplicationRecord
   belongs_to :label
 
   serializable do
-    attributes :name, :id
-    attribute :name, label: :test_name
-    has_many :variations
-    belongs_to :label
-    has_many :categories
+    default do
+      attributes :name, :id
+      # attribute :name, label: :test_name
+      has_many :variations
+      belongs_to :label
+      has_many :categories
+    end
+
+    trait :simple do
+      attributes :id
+      has_many :variations, trait: :product
+    end
   end
 end
