@@ -21,6 +21,13 @@ class Api::ProductsController < ApplicationController
     render json: Product.limit(200).order(updated_at: :desc).json
   end
 
+  def jbuilder
+    @products = Product.limit(200)
+                       .order(updated_at: :desc)
+                       .includes(:categories, :label, variations: :color)
+    render 'api/products/index.json.jbuilder'
+  end
+
   def show
     render json: Product.find(params[:id]).json
   end
