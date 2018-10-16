@@ -18,7 +18,7 @@ gem 'bootsnap', '>= 1.1.0', require: false
 gem 'jbuilder'
 gem 'fast_jsonapi'
 
-gem 'pg_serializable', path: '../pg_serializable'
+gem 'pg_serializable'
 
 gem 'ffaker'
 
