@@ -3,8 +3,9 @@ require 'benchmark'
 class SerializerBenchmark
   def perform(n = 100)
     res = Benchmark.bmbm do |x|
-      x.report("fast_jsonapi") { n.times { app.get "http://localhost/api/products/fast_jsonapi";1 } }
-      x.report("pg_serializable")  {  n.times { app.get "http://localhost/api/products/pg_serializable";1 } }
+      x.report("jbuilder") { n.times { app.get "http://localhost/api/products/jbuilder" } }
+      x.report("fast_jsonapi") { n.times { app.get "http://localhost/api/products/fast_jsonapi" } }
+      x.report("pg_serializable")  {  n.times { app.get "http://localhost/api/products/pg_serializable" } }
     end
     puts res
   end

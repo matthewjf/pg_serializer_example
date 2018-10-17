@@ -12,5 +12,7 @@ module PgSerializerTest
     config.cache_store = :null_store
     config.eager_load = true
     config.load_defaults 5.2
+
+    config.autoload_paths << Rails.root.join("app/services")
   end
 end
