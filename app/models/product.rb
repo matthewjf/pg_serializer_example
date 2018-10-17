@@ -11,8 +11,8 @@ class Product < ApplicationRecord
 
   serializable do
     default do
-      attributes :name, :id, :product_type
-      attribute :name, label: :test_name
+      attributes :name, :id
+      # attribute :name, label: :test_name
       has_many :variations
       belongs_to :label
       has_many :categories
